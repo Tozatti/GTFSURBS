@@ -7,7 +7,7 @@ let state = {
   dayFilter: 'weekday',
   typeFilter: 'all',
   searchQuery: '',
-  clustersVisible: true,
+  clustersVisible: false,
 };
 
 let map, markerCluster, shapeLayer, stopMarkers;
@@ -33,7 +33,6 @@ function initMap() {
     spiderfyOnMaxZoom: true,
     disableClusteringAtZoom: 16,
   });
-  map.addLayer(markerCluster);
 
   shapeLayer = L.layerGroup().addTo(map);
   stopMarkers = L.layerGroup().addTo(map);
