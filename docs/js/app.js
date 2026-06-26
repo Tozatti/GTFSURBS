@@ -4,8 +4,7 @@ let state = {
   stopsGeo: null,
   activeRouteId: null,
   activeStopId: null,
-  dayFilter: 'weekday',
-  typeFilter: 'all',
+
   searchQuery: '',
   clustersVisible: false,
 };
@@ -68,10 +67,6 @@ function renderRoutes(features) {
       const p = f.properties;
       return p.short_name.toLowerCase().includes(q) || p.long_name.toLowerCase().includes(q);
     });
-  }
-
-  if (state.typeFilter !== 'all') {
-    filtered = filtered.filter(f => f.properties.route_type === parseInt(state.typeFilter));
   }
 
   container.innerHTML = '';
@@ -226,12 +221,9 @@ async function selectStop(stopId) {
   showStopDetail(data, stopId);
 }
 
-/* ---- Stop Detail Panel ---- */
-async function showStopDetail(data, stopId) {
-  const panel = document.getElementById('detail-panel');
+function renderStopTimes(data, stopId, dayKey) {
   const content = document.getElementById('detail-content');
 
-  // Find stop name from cache
   let stopName = stopId;
   let stopCode = '';
   if (stopsCache && stopsCache.features) {
@@ -244,15 +236,12 @@ async function showStopDetail(data, stopId) {
     }
   }
 
-  const dayLabels = {
-    weekday: 'Dias Úteis',
-    saturday: 'Sábado',
-    sunday: 'Domingo',
-  };
+  const dayLabels = { weekday: 'Dias Úteis', saturday: 'Sábado', sunday: 'Domingo' };
+  const times = data[dayKey] || [];
 
   let rows = '';
-  if (data.times && data.times.length) {
-    for (const t of data.times) {
+  if (times.length) {
+    for (const t of times) {
       rows += `
         <li>
           <span class="route-badge" style="background:${t.route_color};min-width:36px;height:20px;font-size:10px">${escHtml(t.route_short_name)}</span>
@@ -262,7 +251,14 @@ async function showStopDetail(data, stopId) {
       `;
     }
   } else {
-    rows = '<li style="color:var(--text2)">Nenhum horário encontrado para hoje</li>';
+    rows = '<li style="color:var(--text2)">Nenhum horário encontrado</li>';
+  }
+
+  const days = ['weekday', 'saturday', 'sunday'];
+  let dayBtns = '';
+  for (const d of days) {
+    const active = d === dayKey ? ' active' : '';
+    dayBtns += `<button class="stop-day-btn${active}" data-day="${d}">${dayLabels[d]}</button>`;
   }
 
   content.innerHTML = `
@@ -271,12 +267,26 @@ async function showStopDetail(data, stopId) {
     </div>
     <div class="detail-info">
       <div><span class="label">Código</span><br>${escHtml(stopCode || '—')}</div>
-      <div><span class="label">Dia</span><br>${dayLabels[data.day] || data.day}</div>
     </div>
-    <div class="detail-section-title">Próximos horários</div>
+    <div class="stop-day-selector">${dayBtns}</div>
+    <div class="detail-section-title">Horários</div>
     <ul class="times-list">${rows}</ul>
   `;
 
+  content.querySelectorAll('.stop-day-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      renderStopTimes(data, stopId, this.dataset.day);
+    });
+  });
+}
+
+const DAY_ORDER = ['weekday', 'saturday', 'sunday'];
+const TODAY_DAY = DAY_ORDER[new Date().getDay() === 0 ? 2 : new Date().getDay() === 6 ? 1 : 0];
+
+/* ---- Stop Detail Panel ---- */
+async function showStopDetail(data, stopId) {
+  const panel = document.getElementById('detail-panel');
+  renderStopTimes(data, stopId, TODAY_DAY);
   panel.classList.remove('hidden');
 }
 

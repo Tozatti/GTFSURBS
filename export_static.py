@@ -1,6 +1,5 @@
 import json
 import os
-from datetime import date
 
 from sqlalchemy import create_engine
 
@@ -13,10 +12,7 @@ STOPS_DIR = f"{DATA_DIR}/stops"
 os.makedirs(ROUTES_DIR, exist_ok=True)
 os.makedirs(STOPS_DIR, exist_ok=True)
 
-today = date.today()
-weekday = today.weekday()
 day_names = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-today_name = day_names[weekday]
 
 conn = engine.connect()
 
@@ -186,11 +182,19 @@ def export_stops_index():
     return [s.stop_id for s in stops]
 
 
-def export_stop_times(stop_id):
-    calendars = select(f"SELECT service_id FROM calendars WHERE {today_name} = 1").fetchall()
+WEEKDAY_COLS = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+
+
+def export_stop_times_for_day(stop_id, day_columns):
+    if isinstance(day_columns, list):
+        condition = " OR ".join(f"{c} = 1" for c in day_columns)
+    else:
+        condition = f"{day_columns} = 1"
+
+    calendars = select(f"SELECT service_id FROM calendars WHERE {condition}").fetchall()
     service_ids = [c.service_id for c in calendars]
     if not service_ids:
-        return
+        return []
 
     s_placeholders = ",".join("?" * len(service_ids))
     times = select(
@@ -205,23 +209,29 @@ def export_stop_times(stop_id):
         [stop_id] + service_ids,
     ).fetchall()
 
+    return [
+        {
+            "trip_id": t.trip_id,
+            "route_short_name": t.route_short_name or "",
+            "route_color": f"#{t.route_color or '999999'}",
+            "arrival_time": t.arrival_time or "",
+            "departure_time": t.departure_time or "",
+            "stop_sequence": t.stop_sequence,
+            "headsign": t.trip_headsign or "",
+        }
+        for t in times
+    ]
+
+
+def export_stop_times(stop_id):
     os.makedirs(f"{STOPS_DIR}/{stop_id}", exist_ok=True)
+    data = {
+        "weekday": export_stop_times_for_day(stop_id, WEEKDAY_COLS),
+        "saturday": export_stop_times_for_day(stop_id, "saturday"),
+        "sunday": export_stop_times_for_day(stop_id, "sunday"),
+    }
     with open(f"{STOPS_DIR}/{stop_id}/times.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "times": [
-                {
-                    "trip_id": t.trip_id,
-                    "route_short_name": t.route_short_name or "",
-                    "route_color": f"#{t.route_color or '999999'}",
-                    "arrival_time": t.arrival_time or "",
-                    "departure_time": t.departure_time or "",
-                    "stop_sequence": t.stop_sequence,
-                    "headsign": t.trip_headsign or "",
-                }
-                for t in times
-            ],
-            "day": today_name,
-        }, f, ensure_ascii=False)
+        json.dump(data, f, ensure_ascii=False)
 
 
 def main():
