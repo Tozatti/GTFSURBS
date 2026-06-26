@@ -403,23 +403,6 @@ document.getElementById('panel-overlay').addEventListener('click', function () {
   this.classList.remove('visible');
 });
 
-document.querySelectorAll('.day-selector button').forEach(btn => {
-  btn.addEventListener('click', function () {
-    document.querySelectorAll('.day-selector button').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    state.dayFilter = this.dataset.day;
-  });
-});
-
-document.querySelectorAll('.type-filter button').forEach(btn => {
-  btn.addEventListener('click', function () {
-    document.querySelectorAll('.type-filter button').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    state.typeFilter = this.dataset.type;
-    renderRoutes(routesCache || []);
-  });
-});
-
 document.getElementById('toggle-clusters').addEventListener('click', function () {
   state.clustersVisible = !state.clustersVisible;
   this.classList.toggle('active');
