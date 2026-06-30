@@ -3,8 +3,10 @@ from datetime import date, datetime
 
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.views.decorators.http import require_GET
 
 from .models import Route, Stop, Trip, StopTime, Shape, Calendar
+from .route_planner import Graph
 
 
 def index(request):
@@ -244,3 +246,22 @@ def api_search(request):
             for s in stops
         ],
     })
+
+
+@require_GET
+def api_plan_route(request):
+    try:
+        origin_lat = float(request.GET.get("origin_lat", ""))
+        origin_lon = float(request.GET.get("origin_lon", ""))
+        dest_lat = float(request.GET.get("dest_lat", ""))
+        dest_lon = float(request.GET.get("dest_lon", ""))
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "Parâmetros inválidos. Use origin_lat, origin_lon, dest_lat, dest_lon"}, status=400)
+
+    graph = Graph()
+    result = graph.plan_route(origin_lat, origin_lon, dest_lat, dest_lon)
+    return JsonResponse(result)
+
+
+def route_planner(request):
+    return render(request, "core/route.html")
